@@ -35,6 +35,8 @@ function cleanVerseText(raw: string): string {
     .replace(/<S>[^<]*<\/S>/gi, '') // Strip Strong's concordance tags
     .replace(/<[^>]+>/g, '')         // Strip any other HTML tags
     .replace(/&nbsp;/g, ' ')
+    .replace(/(?<=[a-zA-Z,\.;:\?!'’])\d{3,5}/g, '') // Strip inline Strong IDs attached to words
+    .replace(/\s\d{3,5}\s/g, ' ')                   // Strip standalone Strong numbers
     .replace(/\s+/g, ' ')
     .trim();
 }
