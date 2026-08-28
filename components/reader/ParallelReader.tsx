@@ -9,6 +9,7 @@ import { CrossReferencesModal } from '@/components/study/CrossReferencesModal';
 import { VerseNoteModal } from '@/components/reader/VerseNoteModal';
 import { AudioPlayerBar } from '@/components/audio/AudioPlayerBar';
 import { InlineVerseStudyStrip } from '@/components/reader/InlineVerseStudyStrip';
+import { ToolsBottomSheet } from '@/components/reader/ToolsBottomSheet';
 import {
   ChevronLeft,
   ChevronRight,
@@ -22,8 +23,6 @@ import {
   FileText,
   Link2,
   Sparkles,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 interface ParallelReaderProps {
@@ -61,8 +60,9 @@ export function ParallelReader({
   const [highlights, setHighlights] = useState<Record<string, SavedHighlight>>({});
   const [notes, setNotes] = useState<Record<string, SavedNote>>({});
 
-  // Study modals state
+  // Study modals and tools sheet state
   const [isAudioOpen, setIsAudioOpen] = useState<boolean>(false);
+  const [isToolsSheetOpen, setIsToolsSheetOpen] = useState<boolean>(false);
   const [isMorphologyOpen, setIsMorphologyOpen] = useState<boolean>(false);
   const [isCrossRefOpen, setIsCrossRefOpen] = useState<boolean>(false);
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState<boolean>(false);
@@ -200,7 +200,7 @@ export function ParallelReader({
   };
 
   const getScriptClass = (code: string) => {
-    if (code.startsWith('amh') || code.startsWith('am-')) return 'script-amharic font-eth';
+    if (code.startsWith('amh') || code.startsWith('am-')) return 'script-amharic font-amharic';
     if (code.startsWith('heb')) return 'script-hebrew font-hebrew';
     if (code.startsWith('grc')) return 'script-greek font-greek';
     return 'script-english font-serif';
@@ -222,19 +222,14 @@ export function ParallelReader({
     { id: 'slate', name: 'Slate', dot: '#64748b' },
   ];
 
+  // Ribbon quick switcher (Only verified active translations)
   const quickSwitchCodes = [
-    'am-1875',
-    'eng-kjv',
-    'eng-web',
-    'eng-asv',
-    'eng-bbe',
-    'eng-ylt',
-    'eng-darby',
-    'eng-dra',
-    'eng-gnv',
-    'heb-wlc',
-    'grc-sblgnt',
-    'grc-tr',
+    { code: 'eng-kjv', label: 'EN · KJV' },
+    { code: 'am-1875', label: 'አማ · 1879' },
+    { code: 'heb-wlc', label: 'עב · WLC' },
+    { code: 'grc-sblgnt', label: 'GR · NT' },
+    { code: 'eng-web', label: 'WEB' },
+    { code: 'eng-asv', label: 'ASV' },
   ];
 
   const selectedVerseObj = data.verses.find((v) => v.verse_num === selectedVerseForModal);
@@ -247,7 +242,7 @@ export function ParallelReader({
   const isOldTestament = data.book.testament === 'old';
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full overflow-hidden pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full overflow-hidden pb-20 relative">
       {/* Chapter Title & Localized Header */}
       <div className="text-center py-4 sm:py-6 border-b border-[var(--border-color)] relative">
         <span className="text-[10px] sm:text-xs uppercase tracking-widest text-[var(--accent-color)] font-bold mb-1 block">
@@ -258,17 +253,17 @@ export function ParallelReader({
         </h1>
         <div className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {data.book.name_am && (
-            <span className="font-eth text-base sm:text-lg">
+            <span className="font-amharic text-base sm:text-lg">
               {data.book.name_am} ምዕራፍ {data.chapter}
             </span>
           )}
           {data.book.name_he && (
-            <span className="font-serif text-sm sm:text-base">
+            <span className="font-hebrew text-sm sm:text-base">
               {data.book.name_he} {data.chapter}
             </span>
           )}
           {data.book.name_gr && (
-            <span className="italic text-xs sm:text-sm">
+            <span className="font-greek italic text-xs sm:text-sm">
               {data.book.name_gr} {data.chapter}
             </span>
           )}
@@ -278,7 +273,7 @@ export function ParallelReader({
         <div className="mt-3.5 flex items-center justify-center">
           <button
             onClick={() => setIsAudioOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[var(--accent-color)] text-white text-xs font-bold shadow-md hover:bg-[var(--accent-hover)] transition-all active:scale-95"
+            className="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-full bg-[var(--gold-gradient)] text-[#241c08] text-xs font-bold shadow-md hover:brightness-105 transition-all active:scale-95"
           >
             <Volume2 className="w-3.5 h-3.5" />
             <span>ድምፅ አዳምጥ • Listen Audio</span>
@@ -288,8 +283,24 @@ export function ParallelReader({
 
       {/* Main Single Reader View */}
       {!isParallelMode ? (
-        <div className="max-w-3xl mx-auto rounded-2xl sm:rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-color)] p-3.5 sm:p-8 md:p-10 shadow-sm space-y-4 sm:space-y-6">
-          {/* Active Translation Toolbar & Quick Switcher */}
+        <div className="max-w-3xl mx-auto rounded-2xl sm:rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-color)] p-4 sm:p-8 md:p-10 shadow-sm space-y-4 sm:space-y-6">
+          {/* Ribbon Strip for Quick Translation Switching (Matching Concept) */}
+          <div className="ribbon-strip">
+            {quickSwitchCodes.map((item) => {
+              const isCurrent = primaryTranslationCode === item.code;
+              return (
+                <button
+                  key={item.code}
+                  onClick={() => onChangePrimaryTranslation && onChangePrimaryTranslation(item.code)}
+                  className={`ribbon-pill ${isCurrent ? 'active' : ''}`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Translation Toolbar & Dropdown */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 sm:pb-4 border-b border-[var(--border-color)]">
             <div className="flex items-center space-x-2 min-w-0">
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] shrink-0">
@@ -341,33 +352,6 @@ export function ParallelReader({
             )}
           </div>
 
-          {/* Quick Switch Pills */}
-          {onChangePrimaryTranslation && (
-            <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
-              <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)] font-medium mr-1 shrink-0">
-                Switch:
-              </span>
-              {quickSwitchCodes.map((code) => {
-                const tr = allTranslations.find((t) => t.code === code);
-                if (!tr) return null;
-                const isCurrent = primaryTranslationCode === code;
-                return (
-                  <button
-                    key={code}
-                    onClick={() => onChangePrimaryTranslation(code)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold font-mono transition-all shrink-0 ${
-                      isCurrent
-                        ? 'bg-[var(--accent-color)] text-white shadow-sm'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--border-color)]'
-                    }`}
-                  >
-                    {tr.short_code || tr.code}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Verses Flow */}
           <div
             className="space-y-4 divide-y divide-[var(--border-color)]/60 divide-dashed"
@@ -387,6 +371,9 @@ export function ParallelReader({
                 ? verse.translations['heb-wlc']?.text
                 : verse.translations['grc-sblgnt']?.text || verse.translations['grc-tr']?.text;
 
+              const isFirstVerse = verse.verse_num === 1;
+              const isEnglishScript = !activeTranslation.code.startsWith('am') && !activeTranslation.code.startsWith('heb');
+
               return (
                 <div
                   key={verse.verse_num}
@@ -405,9 +392,7 @@ export function ParallelReader({
                   <div className={`flex items-baseline gap-2.5 sm:gap-3.5 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
                     {/* Verse Number & Badges */}
                     <div className="inline-flex items-center space-x-1 shrink-0 select-none">
-                      <span className="inline-flex items-center justify-center text-[11px] sm:text-xs font-bold font-mono px-1.5 sm:px-2 py-0.5 rounded-lg bg-[var(--bg-secondary)] text-[var(--accent-color)] shadow-sm">
-                        {verse.verse_num}
-                      </span>
+                      <span className="vnum">{verse.verse_num}</span>
                       {isFav && (
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500 drop-shadow-sm" />
                       )}
@@ -416,26 +401,31 @@ export function ParallelReader({
                       )}
                     </div>
 
-                    {/* Primary Translation Verse Text */}
-                    <p
+                    {/* Primary Translation Verse Text with Dropcap support */}
+                    <div
                       className={`flex-1 text-[var(--text-primary)] leading-relaxed ${getScriptClass(
                         activeTranslation.code
                       )}`}
                       style={{ fontSize: `${fontSize}px` }}
                     >
                       {verseData ? (
-                        verseData.text
+                        isFirstVerse && isEnglishScript && verseData.text.length > 1 ? (
+                          <p>
+                            <span className="dropcap">{verseData.text[0]}</span>
+                            {verseData.text.slice(1)}
+                          </p>
+                        ) : (
+                          <p>{verseData.text}</p>
+                        )
                       ) : (
                         <span className="italic text-[var(--text-muted)] text-xs">
                           [Verse text from {activeTranslation.name}...]
                         </span>
                       )}
-                    </p>
+                    </div>
                   </div>
 
-                  {/* ========================================================= */}
-                  {/* INLINE GREEK / HEBREW & TSK CROSS-REFERENCES UNDER VERSE  */}
-                  {/* ========================================================= */}
+                  {/* Inline Strong's & Cross-References Tabs (Revealed on touch) */}
                   <InlineVerseStudyStrip
                     bookSlug={data.book.slug}
                     bookName={data.book.name_en}
@@ -563,8 +553,14 @@ export function ParallelReader({
           </div>
         </div>
       ) : (
-        /* Parallel Columns / Stacked View */
+        /* Parallel Columns / Stacked View (Matching Concept) */
         <div className="max-w-5xl mx-auto space-y-4">
+          <div className="ribbon-strip">
+            <span className="ribbon-pill active">
+              {resolvedTranslations.map((t) => t.short_code || t.code).join(' + ')}
+            </span>
+          </div>
+
           {data.verses.map((verse) => {
             const isSelected = activeVerseNum === verse.verse_num;
             const vKey = getVerseKey(verse.verse_num);
@@ -593,7 +589,7 @@ export function ParallelReader({
               >
                 <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-[var(--border-color)]/60 text-xs">
                   <div className="flex items-center space-x-1.5">
-                    <span className="font-mono font-bold px-2 py-0.5 rounded bg-[var(--accent-color)] text-white text-[11px]">
+                    <span className="vnum font-bold">
                       Verse {verse.verse_num}
                     </span>
                     {isFav && <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />}
@@ -641,11 +637,11 @@ export function ParallelReader({
                       <div
                         key={tr.code}
                         dir={tr.script_direction}
-                        className={`p-2 rounded-xl bg-[var(--bg-secondary)]/40 ${isRtl ? 'text-right' : 'text-left'}`}
+                        className={`p-3 rounded-xl bg-[var(--bg-secondary)]/40 ${isRtl ? 'text-right' : 'text-left'}`}
                       >
-                        <span className="text-[10px] font-bold text-[var(--accent-color)] uppercase block mb-1">
-                          {tr.short_code || tr.code}
-                        </span>
+                        <div className="text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-wider mb-1">
+                          {tr.language} · {tr.short_code || tr.code}
+                        </div>
                         <p className={`text-[var(--text-primary)] leading-relaxed ${getScriptClass(tr.code)}`} style={{ fontSize: `${fontSize}px` }}>
                           {verseData ? verseData.text : '[Not available]'}
                         </p>
@@ -684,7 +680,7 @@ export function ParallelReader({
         )}
 
         <Link
-          href={`/read/${data.book.slug}`}
+          href={`/`}
           className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--accent-color)] transition-colors py-1"
         >
           All Chapters of {data.book.name_en}
@@ -693,7 +689,7 @@ export function ParallelReader({
         {data.next_chapter ? (
           <Link
             href={`/read/${data.next_chapter.book_slug}/${data.next_chapter.chapter}?t=${primaryTranslationCode}`}
-            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold transition-all shadow-sm group"
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl bg-[var(--gold-gradient)] hover:brightness-105 text-[#241c08] text-xs font-bold transition-all shadow-sm group"
           >
             <span>Next Chapter</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -702,6 +698,30 @@ export function ParallelReader({
           <div />
         )}
       </div>
+
+      {/* Floating Action Button (FAB ✦ from Concept) */}
+      <button
+        onClick={() => setIsToolsSheetOpen(true)}
+        className="fab"
+        title="Open Word Study & Tools Drawer"
+        aria-label="Open Study Tools"
+      >
+        ✦
+      </button>
+
+      {/* Tools Bottom Sheet Drawer (From Concept) */}
+      <ToolsBottomSheet
+        isOpen={isToolsSheetOpen}
+        onClose={() => setIsToolsSheetOpen(false)}
+        bookSlug={data.book.slug}
+        bookName={data.book.name_en}
+        testament={data.book.testament}
+        chapter={data.chapter}
+        verseNum={selectedVerseForModal}
+        originalText={selectedVerseOriginal}
+        verseText={selectedVerseText}
+        onOpenNotes={() => setIsNoteEditorOpen(true)}
+      />
 
       {/* Modals & Tools */}
       {isAudioOpen && (
