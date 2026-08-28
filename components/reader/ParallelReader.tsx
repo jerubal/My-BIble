@@ -373,6 +373,14 @@ export function ParallelReader({
                 ? verse.translations['heb-wlc']?.text
                 : verse.translations['grc-sblgnt']?.text || verse.translations['grc-tr']?.text;
 
+              const currentVerseText =
+                verseData?.text ||
+                verse.translations['am-1875']?.text ||
+                verse.translations['am-1954']?.text ||
+                verse.translations['eng-kjv']?.text ||
+                Object.values(verse.translations)[0]?.text ||
+                '';
+
               const isFirstVerse = verse.verse_num === 1;
               const isEnglishScript = !activeTranslation.code.startsWith('am') && !activeTranslation.code.startsWith('heb');
 
@@ -410,18 +418,18 @@ export function ParallelReader({
                       )}`}
                       style={{ fontSize: `${fontSize}px` }}
                     >
-                      {verseData ? (
-                        isFirstVerse && isEnglishScript && verseData.text.length > 1 ? (
+                      {currentVerseText ? (
+                        isFirstVerse && isEnglishScript && currentVerseText.length > 1 ? (
                           <p>
-                            <span className="dropcap">{verseData.text[0]}</span>
-                            {verseData.text.slice(1)}
+                            <span className="dropcap">{currentVerseText[0]}</span>
+                            {currentVerseText.slice(1)}
                           </p>
                         ) : (
-                          <p>{verseData.text}</p>
+                          <p>{currentVerseText}</p>
                         )
                       ) : (
                         <span className="italic text-[var(--text-muted)] text-xs">
-                          [Verse text from {activeTranslation.name}...]
+                          {activeTranslation.name}
                         </span>
                       )}
                     </div>
@@ -635,6 +643,14 @@ export function ParallelReader({
                     const verseData = verse.translations[tr.code];
                     const isRtl = tr.script_direction === 'rtl';
 
+                    const colVerseText =
+                      verseData?.text ||
+                      (tr.code.startsWith('am')
+                        ? verse.translations['am-1875']?.text || verse.translations['am-1954']?.text
+                        : verse.translations['eng-kjv']?.text || verse.translations['eng-web']?.text) ||
+                      Object.values(verse.translations)[0]?.text ||
+                      '';
+
                     return (
                       <div
                         key={tr.code}
@@ -645,7 +661,7 @@ export function ParallelReader({
                           {tr.language} · {tr.short_code || tr.code}
                         </div>
                         <p className={`text-[var(--text-primary)] leading-relaxed ${getScriptClass(tr.code)}`} style={{ fontSize: `${fontSize}px` }}>
-                          {verseData ? verseData.text : '[Not available]'}
+                          {colVerseText || '[Not available]'}
                         </p>
                       </div>
                     );
