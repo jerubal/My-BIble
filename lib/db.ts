@@ -10,21 +10,47 @@ import { fetchFullChapterVerses } from './bible-fetcher';
 // Combined in-memory seed dataset for fallback and indexing
 const ALL_SEED_VERSES = [...SEED_VERSES_RUTH, ...SEED_VERSES_SAMPLES];
 
-let pool: Pool | null = null;
+// Multi-provider Postgres URL resolution (Vercel Postgres, Supabase, Neon, Railway, Render, local)
+function getConnectionString(): string | null {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.NEON_DATABASE_URL ||
+    null
+  );
+}
+
+// Global connection pool cache for Next.js hot-reloads and serverless execution
+declare global {
+  // eslint-disable-next-line no-var
+  var __ruthBiblePgPool: Pool | undefined;
+}
 
 export function getDbPool(): Pool | null {
-  if (process.env.DATABASE_URL) {
-    if (!pool) {
-      pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-        max: 10,
-        idleTimeoutMillis: 30000,
-      });
-    }
-    return pool;
+  const connectionString = getConnectionString();
+  if (!connectionString) {
+    return null;
   }
-  return null;
+
+  if (!globalThis.__ruthBiblePgPool) {
+    const isCloud = !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
+    globalThis.__ruthBiblePgPool = new Pool({
+      connectionString,
+      ssl: isCloud ? { rejectUnauthorized: false } : undefined,
+      max: process.env.NODE_ENV === 'production' ? 15 : 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    globalThis.__ruthBiblePgPool.on('error', (err) => {
+      console.error('[DB Pool Error]', err.message);
+    });
+  }
+
+  return globalThis.__ruthBiblePgPool;
 }
 
 // -------------------------------------------------------------
@@ -337,4 +363,116 @@ export async function logIngestionRun(log: IngestionLog) {
     }
   }
 }
+
+// -------------------------------------------------------------
+// User Bookmarks, Highlights & Notes Persistence (Postgres)
+// -------------------------------------------------------------
+export async function saveUserBookmark(userId: string, bookSlug: string, chapter: number, verseNum: number) {
+  const db = getDbPool();
+  if (!db) return;
+  const book = await getBookBySlug(bookSlug);
+  if (!book) return;
+
+  await db.query(
+    `INSERT INTO bookmarks (user_id, book_id, chapter, verse_num)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, book_id, chapter, verse_num) DO NOTHING`,
+    [userId, book.id, chapter, verseNum]
+  );
+}
+
+export async function deleteUserBookmark(userId: string, bookSlug: string, chapter: number, verseNum: number) {
+  const db = getDbPool();
+  if (!db) return;
+  const book = await getBookBySlug(bookSlug);
+  if (!book) return;
+
+  await db.query(
+    `DELETE FROM bookmarks WHERE user_id = $1 AND book_id = $2 AND chapter = $3 AND verse_num = $4`,
+    [userId, book.id, chapter, verseNum]
+  );
+}
+
+export async function getUserBookmarks(userId: string) {
+  const db = getDbPool();
+  if (!db) return [];
+
+  const res = await db.query(
+    `SELECT b.slug AS book_slug, b.name_en, b.name_am, bm.chapter, bm.verse_num, bm.created_at
+     FROM bookmarks bm
+     JOIN books b ON bm.book_id = b.id
+     WHERE bm.user_id = $1
+     ORDER BY bm.created_at DESC`,
+    [userId]
+  );
+  return res.rows;
+}
+
+export async function saveUserHighlight(
+  userId: string,
+  bookSlug: string,
+  chapter: number,
+  verseNum: number,
+  color: string,
+  note: string | null = null
+) {
+  const db = getDbPool();
+  if (!db) return;
+  const book = await getBookBySlug(bookSlug);
+  if (!book) return;
+
+  await db.query(
+    `INSERT INTO highlights (user_id, book_id, chapter, verse_num, color, note, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
+     ON CONFLICT (user_id, book_id, chapter, verse_num) DO UPDATE
+     SET color = EXCLUDED.color, note = EXCLUDED.note, updated_at = now()`,
+    [userId, book.id, chapter, verseNum, color, note]
+  );
+}
+
+export async function getUserHighlights(userId: string) {
+  const db = getDbPool();
+  if (!db) return [];
+
+  const res = await db.query(
+    `SELECT b.slug AS book_slug, b.name_en, b.name_am, h.chapter, h.verse_num, h.color, h.note, h.updated_at
+     FROM highlights h
+     JOIN books b ON h.book_id = b.id
+     WHERE h.user_id = $1
+     ORDER BY h.updated_at DESC`,
+    [userId]
+  );
+  return res.rows;
+}
+
+export async function saveUserReadingProgress(userId: string, bookSlug: string, chapter: number) {
+  const db = getDbPool();
+  if (!db) return;
+  const book = await getBookBySlug(bookSlug);
+  if (!book) return;
+
+  await db.query(
+    `INSERT INTO reading_progress (user_id, book_id, chapter, last_read_at)
+     VALUES ($1, $2, $3, now())
+     ON CONFLICT (user_id, book_id) DO UPDATE
+     SET chapter = EXCLUDED.chapter, last_read_at = now()`,
+    [userId, book.id, chapter]
+  );
+}
+
+export async function getUserReadingProgress(userId: string) {
+  const db = getDbPool();
+  if (!db) return [];
+
+  const res = await db.query(
+    `SELECT b.slug AS book_slug, b.name_en, b.name_am, b.chapter_count, rp.chapter, rp.last_read_at
+     FROM reading_progress rp
+     JOIN books b ON rp.book_id = b.id
+     WHERE rp.user_id = $1
+     ORDER BY rp.last_read_at DESC`,
+    [userId]
+  );
+  return res.rows;
+}
+
 
