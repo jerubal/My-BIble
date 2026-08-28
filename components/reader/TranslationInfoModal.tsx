@@ -7,13 +7,13 @@ import { ShieldCheck, X, ExternalLink, Globe, BookOpen } from 'lucide-react';
 interface TranslationInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  translations: Translation[];
+  translations?: Translation[];
 }
 
 export function TranslationInfoModal({
   isOpen,
   onClose,
-  translations,
+  translations = [],
 }: TranslationInfoModalProps) {
   if (!isOpen) return null;
 

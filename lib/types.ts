@@ -86,11 +86,16 @@ export interface ChapterData {
 
 export interface DailyVerse {
   date: string;
-  book_id: number;
+  book_id?: number;
+  book_slug?: string;
+  book_name?: string;
+  book_name_am?: string;
   chapter: number;
   verse_num: number;
   book?: Book;
   verses?: Record<string, string>;
+  verse_text_en?: string;
+  verse_text_am?: string;
 }
 
 export interface SavedHighlight {

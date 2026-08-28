@@ -148,7 +148,7 @@ export async function fetchFullChapterVerses(
 
     try {
       const url = `https://bolls.life/get-chapter/${apiCode}/${book.book_order}/${chapterNum}/`;
-      const res = await fetch(url, { next: { revalidate: 86400 } });
+      const res = await fetch(url, { next: { revalidate: 86400 } } as any);
       if (!res.ok) return;
 
       const data: Array<{ verse: number; text: string }> = await res.json();

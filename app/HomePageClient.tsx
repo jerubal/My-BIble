@@ -435,12 +435,14 @@ export function HomePageClient({
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         books={books}
+        translations={translations}
       />
 
       <DailyVerseModal
         isOpen={isDailyVerseOpen}
         onClose={() => setIsDailyVerseOpen(false)}
         dailyVerse={dailyVerse}
+        translations={translations}
       />
 
       <SavedVersesModal
@@ -454,6 +456,7 @@ export function HomePageClient({
       <TranslationInfoModal
         isOpen={isAttributionOpen}
         onClose={() => setIsAttributionOpen(false)}
+        translations={translations}
       />
     </div>
   );

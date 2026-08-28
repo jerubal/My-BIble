@@ -77,7 +77,7 @@ export function ReaderClient({
           data.book.name_en,
           data.chapter,
           data.verses?.length || 20,
-          data.book.name_am
+          data.book.name_am || undefined
         );
       }
     } catch (e) {}

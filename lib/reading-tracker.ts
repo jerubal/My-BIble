@@ -61,7 +61,7 @@ export function recordChapterRead(
   bookName: string,
   chapter: number,
   verseCount: number,
-  bookNameAm?: string
+  bookNameAm?: string | null
 ) {
   if (typeof window === 'undefined') return;
 

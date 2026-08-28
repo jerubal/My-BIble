@@ -2,16 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Translation } from '@/lib/types';
+import { Translation, Book } from '@/lib/types';
 import { Search, X, Loader2, ArrowRight } from 'lucide-react';
 
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  translations: Translation[];
+  translations?: Translation[];
+  books?: Book[];
 }
 
-export function SearchModal({ isOpen, onClose, translations }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, translations = [] }: SearchModalProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [selectedTranslation, setSelectedTranslation] = useState<string>('');

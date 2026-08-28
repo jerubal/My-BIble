@@ -164,12 +164,19 @@ export async function getChapterVerses(
 // -------------------------------------------------------------
 // Daily Verse Data Access (FR-P1-06)
 // -------------------------------------------------------------
-export async function getDailyVerse(dateStr: string): Promise<DailyVerse | null> {
+export async function getDailyVerse(dateStr: string): Promise<DailyVerse> {
+  const seedMatch = SEED_DAILY_VERSES.find((d) => d.date === dateStr) || SEED_DAILY_VERSES[0];
+  const targetBookSlug = seedMatch ? seedMatch.book_slug : 'ruth';
+  const targetChapter = seedMatch ? seedMatch.chapter : 1;
+  const targetVerseNum = seedMatch ? seedMatch.verse_num : 16;
+
+  const bookObj = SEED_BOOKS.find((b) => b.slug === targetBookSlug) || SEED_BOOKS[7];
+
   const db = getDbPool();
   if (db) {
     try {
       const res = await db.query(
-        `SELECT dv.date, dv.book_id, dv.chapter, dv.verse_num, b.slug, b.name_en, b.name_am, b.name_he, b.name_gr
+        `SELECT dv.date, dv.book_id, dv.chapter, dv.verse_num, b.slug, b.name_en, b.name_am, b.name_he, b.name_gr, b.testament, b.book_order, b.chapter_count
          FROM daily_verses dv
          JOIN books b ON dv.book_id = b.id
          WHERE dv.date = $1 LIMIT 1`,
@@ -191,10 +198,15 @@ export async function getDailyVerse(dateStr: string): Promise<DailyVerse | null>
         return {
           date: row.date,
           book_id: row.book_id,
+          book_slug: row.slug,
+          book_name: row.name_en,
+          book_name_am: row.name_am,
           chapter: row.chapter,
           verse_num: row.verse_num,
           book: row,
           verses: versesObj,
+          verse_text_en: versesObj['eng-kjv'] || versesObj['eng-web'] || 'For where thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.',
+          verse_text_am: versesObj['am-1875'] || versesObj['am-1954'] || 'ሩትም እንዲህ አለች፦ ወደምትሄጂበት እሄዳለሁ፥ በምታድሪበትም አድራለሁ፤ ሕዝብሽ ሕዝቤ፥ አምላክሽም አምላኬ ይሆናል።',
         };
       }
     } catch (err) {
@@ -202,13 +214,9 @@ export async function getDailyVerse(dateStr: string): Promise<DailyVerse | null>
     }
   }
 
-  // Fallback to deterministic seed or Genesis 1:1
-  const found = SEED_DAILY_VERSES.find((dv) => dv.date === dateStr) || SEED_DAILY_VERSES[0];
-  const book = SEED_BOOKS.find((b) => b.slug === found.book_slug) || SEED_BOOKS[0];
-  
-  // Try fetching verses for the daily passage
-  const chapterVerses = await fetchFullChapterVerses(book, found.chapter, ['am-1875', 'eng-kjv', 'eng-web']);
-  const verseMatch = chapterVerses.find((v) => v.verse_num === found.verse_num);
+  // Fallback to deterministic seed
+  const chapterVerses = await fetchFullChapterVerses(bookObj, targetChapter, ['am-1875', 'am-1954', 'eng-kjv', 'eng-web']);
+  const verseMatch = chapterVerses.find((v) => v.verse_num === targetVerseNum);
 
   const versesObj: Record<string, string> = {};
   if (verseMatch) {
@@ -216,19 +224,22 @@ export async function getDailyVerse(dateStr: string): Promise<DailyVerse | null>
       versesObj[code] = val.text;
     }
   } else {
-    // Basic fallback
-    versesObj['am-1875'] = 'በመጀመሪያ እግዚአብሔር ሰማይንና ምድርን ፈጠረ።';
-    versesObj['eng-kjv'] = 'In the beginning God created the heaven and the earth.';
-    versesObj['eng-web'] = 'In the beginning, God created the heavens and the earth.';
+    versesObj['am-1875'] = 'ሩትም እንዲህ አለች፦ ወደምትሄጂበት እሄዳለሁ፥ በምታድሪበትም አድራለሁ፤ ሕዝብሽ ሕዝቤ፥ አምላክሽም አምላኬ ይሆናል።';
+    versesObj['eng-kjv'] = 'For where thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.';
   }
 
   return {
     date: dateStr,
-    book_id: book.id,
-    chapter: found.chapter,
-    verse_num: found.verse_num,
-    book,
+    book_id: bookObj.id,
+    book_slug: bookObj.slug,
+    book_name: bookObj.name_en,
+    book_name_am: bookObj.name_am || undefined,
+    chapter: targetChapter,
+    verse_num: targetVerseNum,
+    book: bookObj,
     verses: versesObj,
+    verse_text_en: versesObj['eng-kjv'] || versesObj['eng-web'] || 'For where thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.',
+    verse_text_am: versesObj['am-1875'] || versesObj['am-1954'] || 'ሩትም እንዲህ አለች፦ ወደምትሄጂበት እሄዳለሁ፥ በምታድሪበትም አድራለሁ፤ ሕዝብሽ ሕዝቤ፥ አምላክሽም አምላኬ ይሆናል።',
   };
 }
 
@@ -326,3 +337,4 @@ export async function logIngestionRun(log: IngestionLog) {
     }
   }
 }
+

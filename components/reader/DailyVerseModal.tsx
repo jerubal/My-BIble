@@ -8,16 +8,23 @@ import { Sparkles, X, Globe, ArrowRight } from 'lucide-react';
 interface DailyVerseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  translations: Translation[];
+  translations?: Translation[];
+  dailyVerse?: DailyVerse | null;
 }
 
-export function DailyVerseModal({ isOpen, onClose, translations }: DailyVerseModalProps) {
+export function DailyVerseModal({ isOpen, onClose, translations = [], dailyVerse }: DailyVerseModalProps) {
   const router = useRouter();
-  const [dailyData, setDailyData] = useState<DailyVerse | null>(null);
+  const [dailyData, setDailyData] = useState<DailyVerse | null>(dailyVerse || null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (dailyVerse) {
+      setDailyData(dailyVerse);
+    }
+  }, [dailyVerse]);
+
+  useEffect(() => {
+    if (isOpen && !dailyData) {
       setLoading(true);
       fetch('/api/daily-verse')
         .then((res) => res.json())
