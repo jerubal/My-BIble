@@ -7,6 +7,8 @@ import { getCrossReferences } from '@/lib/cross-references';
 import { MorphologyWord, CrossReference } from '@/lib/types';
 import { Sparkles, Link2, ExternalLink, ChevronDown, ChevronUp, Copy, Check, BookOpen } from 'lucide-react';
 
+import { recordWordLookup } from '@/lib/reading-tracker';
+
 interface InlineVerseStudyStripProps {
   bookSlug: string;
   bookName: string;
@@ -34,6 +36,25 @@ export function InlineVerseStudyStrip({
 
   const morphology = getVerseMorphology(bookSlug, testament, chapter, verseNum, originalText);
   const crossRefs = getCrossReferences(bookSlug, chapter, verseNum);
+
+  const handleSelectWord = (word: MorphologyWord) => {
+    if (selectedWord?.strongs_id === word.strongs_id) {
+      setSelectedWord(null);
+    } else {
+      setSelectedWord(word);
+      recordWordLookup({
+        surface_form: word.surface_form,
+        strongs_id: word.strongs_id,
+        transliteration: word.transliteration,
+        definition_en: word.definition_en,
+        definition_am: word.definition_am,
+        bookSlug,
+        bookName,
+        chapter,
+        verseNum,
+      });
+    }
+  };
 
   const handleToggleTab = (tab: 'strongs' | 'crossref', e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,7 +153,7 @@ export function InlineVerseStudyStrip({
                 return (
                   <button
                     key={`${word.strongs_id}-${wIdx}`}
-                    onClick={() => setSelectedWord(isSelected ? null : word)}
+                    onClick={() => handleSelectWord(word)}
                     className={`px-2.5 py-1.5 rounded-xl border transition-all text-left flex flex-col items-center gap-0.5 ${
                       isSelected
                         ? 'bg-[var(--accent-color)] text-white border-transparent shadow-sm scale-105'

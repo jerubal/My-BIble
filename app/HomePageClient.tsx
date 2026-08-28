@@ -9,6 +9,7 @@ import { StudyHub } from '@/components/study/StudyHub';
 import { ReadingStatsDashboard } from '@/components/stats/ReadingStatsDashboard';
 import { TranslationsCatalog } from '@/components/translations/TranslationsCatalog';
 import { SavedVersesModal } from '@/components/reader/SavedVersesModal';
+import { SavedView } from '@/components/saved/SavedView';
 import { SearchModal } from '@/components/search/SearchModal';
 import { DailyVerseModal } from '@/components/reader/DailyVerseModal';
 import { TranslationInfoModal } from '@/components/reader/TranslationInfoModal';
@@ -218,16 +219,16 @@ export function HomePageClient({
               </div>
 
               <p className="verse-text">
-                "{dailyVerse ? dailyVerse.verse_text_en : 'For where thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.'}"
+                "{dailyVerse?.verse_text_en || 'For where thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.'}"
               </p>
 
               <div className="flex items-center justify-between pt-1 border-t border-[var(--border-gold)]">
                 <span className="verse-ref">
-                  {dailyVerse ? `${dailyVerse.book_name} ${dailyVerse.chapter}:${dailyVerse.verse_num}` : 'Ruth 1:16'} · KJV
+                  {dailyVerse?.book_name ? `${dailyVerse.book_name} ${dailyVerse.chapter}:${dailyVerse.verse_num}` : 'Ruth 1:16'} · KJV
                 </span>
 
                 <button
-                  onClick={() => router.push(`/read/${dailyVerse ? dailyVerse.book_slug : 'ruth'}/${dailyVerse ? dailyVerse.chapter : 1}?v=${dailyVerse ? dailyVerse.verse_num : 16}`)}
+                  onClick={() => router.push(`/read/${dailyVerse?.book_slug || 'ruth'}/${dailyVerse?.chapter || 1}?v=${dailyVerse?.verse_num || 16}`)}
                   className="text-[11px] font-bold text-[var(--accent-color)] flex items-center gap-1 hover:underline"
                 >
                   <span>Read Chapter</span>
@@ -419,55 +420,7 @@ export function HomePageClient({
         {/* TAB 5: SAVED ITEMS / HIGHLIGHTS                                  */}
         {/* ================================================================= */}
         {activeTab === 'saved' && (
-          <div className="space-y-4 animate-fadeIn pb-24">
-            <div className="flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-color)] block">
-                  Personal Study
-                </span>
-                <h2 className="text-xl font-bold text-[var(--text-primary)]">Saved Verses & Notes</h2>
-              </div>
-              <button
-                onClick={() => setIsSavedVersesOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-[var(--accent-color)] text-[#241c08] text-xs font-bold"
-              >
-                Open Full Viewer
-              </button>
-            </div>
-
-            <div
-              onClick={() => setIsSavedVersesOpen(true)}
-              className="row-card group"
-            >
-              <div>
-                <div className="row-label">Highlights (12 Colors)</div>
-                <div className="row-value">{savedCount} Verses Highlighted</div>
-              </div>
-              <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
-            </div>
-
-            <div
-              onClick={() => setIsSavedVersesOpen(true)}
-              className="row-card group"
-            >
-              <div>
-                <div className="row-label">Personal Notes</div>
-                <div className="row-value">{notesCount} Study Notes Saved</div>
-              </div>
-              <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
-            </div>
-
-            <div
-              onClick={() => setIsSavedVersesOpen(true)}
-              className="row-card group"
-            >
-              <div>
-                <div className="row-label">Backup & Export</div>
-                <div className="row-value">JSON Export & Restore</div>
-              </div>
-              <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
-            </div>
-          </div>
+          <SavedView onRefresh={loadUserData} />
         )}
       </main>
 

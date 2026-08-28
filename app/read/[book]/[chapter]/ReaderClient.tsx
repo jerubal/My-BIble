@@ -12,6 +12,7 @@ import { TranslationInfoModal } from '@/components/reader/TranslationInfoModal';
 import { DailyVerseModal } from '@/components/reader/DailyVerseModal';
 import { SearchModal } from '@/components/search/SearchModal';
 import { SavedVersesModal } from '@/components/reader/SavedVersesModal';
+import { recordChapterRead } from '@/lib/reading-tracker';
 import { ChevronRight } from 'lucide-react';
 
 interface ReaderClientProps {
@@ -61,12 +62,17 @@ export function ReaderClient({
     setData(initialData);
   }, [initialData]);
 
-  // Persist reading position
+  // Persist reading position and record truthful reading analytics
   useEffect(() => {
     try {
       if (data?.book?.slug) {
-        localStorage.setItem('ruth_last_book', data.book.slug);
-        localStorage.setItem('ruth_last_chapter', data.chapter.toString());
+        recordChapterRead(
+          data.book.slug,
+          data.book.name_en,
+          data.chapter,
+          data.verses?.length || 20,
+          data.book.name_am
+        );
       }
     } catch (e) {}
   }, [data]);

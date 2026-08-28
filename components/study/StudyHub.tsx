@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, BookOpen, Link2, FileText, Search, ArrowRight, Check, Copy } from 'lucide-react';
-import { getVerseMorphology } from '@/lib/lexicon';
+import { getReadingStats, ReadingStats } from '@/lib/reading-tracker';
 
 interface StudyHubProps {
   onOpenSavedNotes?: () => void;
@@ -11,7 +11,17 @@ interface StudyHubProps {
 
 export function StudyHub({ onOpenSavedNotes }: StudyHubProps) {
   const router = useRouter();
+  const [stats, setStats] = useState<ReadingStats | null>(null);
+  const [notesCount, setNotesCount] = useState<number>(0);
   const [copied, setCopied] = useState<boolean>(false);
+
+  useEffect(() => {
+    setStats(getReadingStats());
+    try {
+      const notes = JSON.parse(localStorage.getItem('ruth_notes') || '{}');
+      setNotesCount(Object.keys(notes).length);
+    } catch (e) {}
+  }, []);
 
   // Daily Hebrew/Greek Word Study
   const wordOfTheDay = {
@@ -38,33 +48,45 @@ export function StudyHub({ onOpenSavedNotes }: StudyHubProps) {
       <div className="flex items-center justify-between py-2 border-b border-[var(--border-color)]">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-color)] block">
-            Original Languages & Tools
+            Original Languages & Concordance
           </span>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Study Hub</h2>
         </div>
         <button
           onClick={() => router.push('/read/genesis/1')}
-          className="w-8 h-8 rounded-full bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent-color)] text-xs"
-          title="Search Lexicon"
+          className="w-8 h-8 rounded-full bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent-color)] text-xs shadow-sm"
+          title="Explore Scriptures"
         >
           <Search className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* 1. Last Looked Up Card */}
+      {/* 1. Last Looked Up Card (Dynamic from user lookups) */}
       <div
-        onClick={() => router.push('/read/ruth/1?v=16')}
+        onClick={() => {
+          if (stats?.lastLookup) {
+            router.push(`/read/${stats.lastLookup.bookSlug}/${stats.lastLookup.chapter}?v=${stats.lastLookup.verseNum}`);
+          } else {
+            router.push('/read/ruth/1?v=16');
+          }
+        }}
         className="row-card group"
       >
         <div>
-          <div className="row-label">Last looked up</div>
-          <div className="row-value font-hebrew text-base text-[var(--accent-color)]">עַמֵּךְ עַמִּי</div>
-          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Ruth 1:16 · H5971 (People/Nation)</div>
+          <div className="row-label">Last looked up word</div>
+          <div className="row-value font-hebrew text-base text-[var(--accent-color)]">
+            {stats?.lastLookup ? stats.lastLookup.surface_form : 'עַמֵּךְ עַמִּי'}
+          </div>
+          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+            {stats?.lastLookup
+              ? `${stats.lastLookup.bookName} ${stats.lastLookup.chapter}:${stats.lastLookup.verseNum} · ${stats.lastLookup.strongs_id} (${stats.lastLookup.transliteration})`
+              : 'Ruth 1:16 · H5971 (People/Nation)'}
+          </div>
         </div>
         <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
       </div>
 
-      {/* 2. Word of the Day Card (Glow Box from Concept) */}
+      {/* 2. Word of the Day Card (Glowing Box from Concept) */}
       <div className="verse-card space-y-2">
         <div className="flex items-center justify-between">
           <div className="eyebrow flex items-center gap-1.5">
@@ -88,11 +110,11 @@ export function StudyHub({ onOpenSavedNotes }: StudyHubProps) {
           {wordOfTheDay.strongs_id} · <span className="italic font-voice text-xs text-[var(--text-secondary)]">{wordOfTheDay.transliteration}</span> — {wordOfTheDay.definition_en}
         </div>
 
-        <p className="font-amharic text-xs text-[var(--accent-color)] leading-relaxed bg-[var(--bg-surface)]/60 p-2 rounded-xl">
+        <p className="font-amharic text-xs text-[var(--accent-color)] leading-relaxed bg-[var(--bg-surface)]/60 p-2.5 rounded-xl border border-[var(--border-color)]/50">
           {wordOfTheDay.definition_am}
         </p>
 
-        <div className="flex items-center justify-between pt-1 text-[11px] text-[var(--text-muted)]">
+        <div className="flex items-center justify-between pt-1 text-[11px] text-[var(--text-muted)] border-t border-[var(--border-gold)]">
           <span>{wordOfTheDay.frequency}</span>
           <button
             onClick={() => router.push(`/read/${wordOfTheDay.keyPassage.bookSlug}/${wordOfTheDay.keyPassage.chapter}`)}
@@ -111,45 +133,45 @@ export function StudyHub({ onOpenSavedNotes }: StudyHubProps) {
       >
         <div>
           <div className="row-label">Cross-references (TSK)</div>
-          <div className="row-value">Ruth 1:16 · 4 canonical links</div>
-          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Explore covenant & loyalty references</div>
+          <div className="row-value">Ruth 1:16 · Canonical Cross-Refs</div>
+          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Explore covenant & loyalty passages</div>
         </div>
         <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
       </div>
 
-      {/* 4. Your Notes Card */}
+      {/* 4. Your Study Notes Card */}
       <div
         onClick={onOpenSavedNotes}
         className="row-card group"
       >
         <div>
           <div className="row-label">Your Study Notes</div>
-          <div className="row-value">Personal reflections & tags</div>
-          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Click to view all annotated verses</div>
+          <div className="row-value">{notesCount} personal notes saved</div>
+          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Click to search and manage your reflections</div>
         </div>
         <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
       </div>
 
-      {/* 5. Quick Greek / Hebrew Alphabet & Strong's Lookup */}
+      {/* 5. Original Language Tanakh & New Testament Launchers */}
       <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-color)] space-y-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-color)] block">
-          Original Text Tools
+          Original Manuscripts
         </span>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <button
-            onClick={() => router.push('/read/genesis/1')}
-            className="p-3 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] text-left transition-colors"
+            onClick={() => router.push('/read/genesis/1?t=heb-wlc')}
+            className="p-3 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] text-left transition-colors border border-[var(--border-color)] group"
           >
-            <div className="font-hebrew text-base text-[var(--accent-color)]">תּוֹרָה (OT)</div>
+            <div className="font-hebrew text-base text-[var(--accent-color)] group-hover:scale-105 transition-transform">תּוֹרָה (OT)</div>
             <div className="font-bold text-[11px] text-[var(--text-primary)]">Hebrew Tanakh</div>
             <div className="text-[10px] text-[var(--text-muted)]">Westminster Leningrad</div>
           </button>
 
           <button
-            onClick={() => router.push('/read/john/1')}
-            className="p-3 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] text-left transition-colors"
+            onClick={() => router.push('/read/john/1?t=grc-sblgnt')}
+            className="p-3 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] text-left transition-colors border border-[var(--border-color)] group"
           >
-            <div className="font-greek text-base text-[var(--accent-color)]">Καινὴ Διαθήκη (NT)</div>
+            <div className="font-greek text-base text-[var(--accent-color)] group-hover:scale-105 transition-transform">Καινὴ Διαθήκη (NT)</div>
             <div className="font-bold text-[11px] text-[var(--text-primary)]">Greek New Testament</div>
             <div className="text-[10px] text-[var(--text-muted)]">SBLGNT & Textus Receptus</div>
           </button>
