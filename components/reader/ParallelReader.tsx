@@ -97,15 +97,15 @@ export function ParallelReader({
     }
   }, [highlightedVerseParam]);
 
-  // Determine active translations to display
+  // Determine active translations to display (Strictly enforce is_active)
   const activeTranslations: Translation[] = isParallelMode
-    ? allTranslations.filter((t) => parallelTranslationCodes.includes(t.code))
-    : allTranslations.filter((t) => t.code === primaryTranslationCode);
+    ? allTranslations.filter((t) => t.is_active && parallelTranslationCodes.includes(t.code))
+    : allTranslations.filter((t) => t.is_active && t.code === primaryTranslationCode);
 
   const resolvedTranslations =
     activeTranslations.length > 0
       ? activeTranslations
-      : [allTranslations.find((t) => t.code === 'am-1875') || allTranslations[0]];
+      : [allTranslations.find((t) => t.code === 'am-1875' && t.is_active) || allTranslations.find((t) => t.is_active) || allTranslations[0]];
 
   const activeTranslation = resolvedTranslations[0];
 

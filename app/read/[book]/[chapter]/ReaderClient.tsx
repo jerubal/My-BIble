@@ -30,6 +30,13 @@ export function ReaderClient({
   const searchParams = useSearchParams();
   const translationParam = searchParams.get('t');
 
+  // Helper to ensure code is active
+  const getSafeActiveCode = (code: string | null | undefined): string => {
+    if (!code) return 'am-1875';
+    const match = allTranslations.find((t) => t.code === code && t.is_active);
+    return match ? match.code : 'am-1875';
+  };
+
   // Reader state
   const [data, setData] = useState<ChapterData>(initialData);
   const [fontSize, setFontSize] = useState<number>(18);
@@ -38,17 +45,16 @@ export function ReaderClient({
   const [isParallelMode, setIsParallelMode] = useState<boolean>(false);
   const [parallelLayout, setParallelLayout] = useState<'columns' | 'stacked'>('columns');
   const [primaryTranslationCode, setPrimaryTranslationCode] = useState<string>(
-    translationParam || 'am-1875'
+    getSafeActiveCode(translationParam)
   );
   const [parallelTranslationCodes, setParallelTranslationCodes] = useState<string[]>([
     'am-1875',
-    'am-2001',
     'eng-kjv',
     'heb-wlc',
     'grc-sblgnt',
   ]);
 
-  const [theme, setTheme] = useState<string>('sepia');
+  const [theme, setTheme] = useState<string>('dark');
   const [showControls, setShowControls] = useState<boolean>(true);
 
   // Modal states
@@ -77,7 +83,7 @@ export function ReaderClient({
     } catch (e) {}
   }, [data]);
 
-  // Load preferences from localStorage on mount
+  // Load preferences from localStorage on mount and sanitize translations
   useEffect(() => {
     try {
       const savedFontSize = localStorage.getItem('ruth_font_size');
@@ -85,9 +91,9 @@ export function ReaderClient({
 
       if (!translationParam) {
         const savedPrimaryTrans = localStorage.getItem('ruth_primary_translation');
-        if (savedPrimaryTrans) setPrimaryTranslationCode(savedPrimaryTrans);
+        setPrimaryTranslationCode(getSafeActiveCode(savedPrimaryTrans));
       } else {
-        setPrimaryTranslationCode(translationParam);
+        setPrimaryTranslationCode(getSafeActiveCode(translationParam));
       }
 
       const savedParallelMode = localStorage.getItem('ruth_parallel_mode');
@@ -108,7 +114,10 @@ export function ReaderClient({
       if (savedParallelTranslations) {
         const parsed = JSON.parse(savedParallelTranslations);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setParallelTranslationCodes(parsed);
+          const safeCodes = parsed.filter((c: string) =>
+            allTranslations.some((t) => t.code === c && t.is_active)
+          );
+          if (safeCodes.length > 0) setParallelTranslationCodes(safeCodes);
         }
       }
     } catch (e) {
