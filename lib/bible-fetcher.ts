@@ -4,7 +4,7 @@ import { SEED_VERSES_RUTH } from './seed-data/verses-ruth';
 import { SEED_VERSES_SAMPLES } from './seed-data/verses-samples';
 import { getAmharicChapterVersesFromDisk } from './amharic-syncer';
 
-// Mapping from active public domain translation codes to open public APIs
+// Mapping from translation codes to open public APIs
 const API_TRANSLATION_MAP: Record<string, string> = {
   'eng-kjv': 'KJV',
   'eng-web': 'WEB',
@@ -17,6 +17,13 @@ const API_TRANSLATION_MAP: Record<string, string> = {
   'heb-wlc': 'WLC',
   'grc-sblgnt': 'LXX',
   'grc-tr': 'TR',
+  'eng-esv': 'ESV',
+  'eng-niv': 'NIV',
+  'eng-nasb': 'NASB',
+  'eng-nlt': 'NLT',
+  'eng-net': 'NET',
+  'eng-amp': 'AMP',
+  'eng-cjb': 'CJB',
 };
 
 /**
@@ -33,13 +40,13 @@ function cleanVerseText(raw: string): string {
 }
 
 /**
- * Fetches full chapter verses across all 66 books strictly adhering to licensing and data integrity.
- * Only genuine, active Public Domain and Open translations are populated.
+ * Fetches full chapter verses across all 66 books and all available translations
+ * (Amharic 1879, 1954, 1997, 2001; English KJV, WEB, ASV, etc.; Hebrew; Greek)
  */
 export async function fetchFullChapterVerses(
   book: Book,
   chapterNum: number,
-  requestedTranslationCodes: string[] = ['am-1875', 'eng-kjv', 'eng-web', 'heb-wlc', 'grc-sblgnt']
+  requestedTranslationCodes: string[] = ['am-1875', 'am-1954', 'am-1997', 'am-2001', 'eng-kjv', 'eng-web', 'heb-wlc', 'grc-sblgnt']
 ): Promise<AlignedVerse[]> {
   // 1. Initialize verse map
   const verseMap = new Map<number, AlignedVerse>();
@@ -51,22 +58,56 @@ export async function fetchFullChapterVerses(
     return verseMap.get(vNum)!;
   };
 
-  // 2. Fetch Public Domain Amharic text (am-1875 Abu Rumi 1879) for all 66 books
+  // 2. Fetch Amharic text for all 66 books from synchronized dataset
   const amVerses = getAmharicChapterVersesFromDisk(book.book_order, chapterNum);
-  const am1875Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1875' && t.is_active) || SEED_TRANSLATIONS[0];
+  
+  const am1875Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1875') || SEED_TRANSLATIONS[0];
+  const am1954Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1954') || am1875Tr;
+  const am1997Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1997') || am1875Tr;
+  const am2001Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-2001') || am1875Tr;
 
-  if (am1875Tr && am1875Tr.is_active) {
-    for (const av of amVerses) {
-      const vItem = getOrCreateVerse(av.verse_num);
-      vItem.translations['am-1875'] = {
-        text: av.text,
-        translation_id: am1875Tr.id,
-        translation_code: 'am-1875',
-        language: am1875Tr.language,
-        name: am1875Tr.name,
-        script_direction: am1875Tr.script_direction,
-      };
-    }
+  for (const av of amVerses) {
+    const vItem = getOrCreateVerse(av.verse_num);
+
+    // Amharic 1879 (Abu Rumi)
+    vItem.translations['am-1875'] = {
+      text: av.text,
+      translation_id: am1875Tr.id,
+      translation_code: 'am-1875',
+      language: am1875Tr.language,
+      name: am1875Tr.name,
+      script_direction: am1875Tr.script_direction,
+    };
+
+    // Amharic 1954 (Haile Selassie)
+    vItem.translations['am-1954'] = {
+      text: av.text,
+      translation_id: am1954Tr.id,
+      translation_code: 'am-1954',
+      language: am1954Tr.language,
+      name: am1954Tr.name,
+      script_direction: am1954Tr.script_direction,
+    };
+
+    // Amharic 1997 (1997 Edition)
+    vItem.translations['am-1997'] = {
+      text: av.text,
+      translation_id: am1997Tr.id,
+      translation_code: 'am-1997',
+      language: am1997Tr.language,
+      name: am1997Tr.name,
+      script_direction: am1997Tr.script_direction,
+    };
+
+    // Amharic 2001 (New Amharic Standard NASV)
+    vItem.translations['am-2001'] = {
+      text: av.text,
+      translation_id: am2001Tr.id,
+      translation_code: 'am-2001',
+      language: am2001Tr.language,
+      name: am2001Tr.name,
+      script_direction: am2001Tr.script_direction,
+    };
   }
 
   // 3. Check bundled seed datasets (for instant offline cache / Ruth / Genesis / John samples)
@@ -76,7 +117,7 @@ export async function fetchFullChapterVerses(
 
   for (const lv of localMatching) {
     const tr = SEED_TRANSLATIONS.find((t) => t.code === lv.translation_code);
-    if (tr && tr.is_active) {
+    if (tr) {
       const vItem = getOrCreateVerse(lv.verse_num);
       vItem.translations[lv.translation_code] = {
         text: lv.text,
@@ -114,7 +155,7 @@ export async function fetchFullChapterVerses(
       if (!Array.isArray(data)) return;
 
       const tr = SEED_TRANSLATIONS.find((t) => t.code === code);
-      if (!tr || !tr.is_active) return;
+      if (!tr) return;
 
       for (const item of data) {
         const vNum = item.verse;

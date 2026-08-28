@@ -222,14 +222,16 @@ export function ParallelReader({
     { id: 'slate', name: 'Slate', dot: '#64748b' },
   ];
 
-  // Ribbon quick switcher (Only verified active translations)
+  // Ribbon quick switcher (All Amharic translations 1879, 1954, 1997, 2001 + English, Hebrew, Greek)
   const quickSwitchCodes = [
-    { code: 'eng-kjv', label: 'EN · KJV' },
     { code: 'am-1875', label: 'አማ · 1879' },
+    { code: 'am-1954', label: 'አማ · 1954' },
+    { code: 'am-1997', label: 'አማ · 1997' },
+    { code: 'am-2001', label: 'አማ · 2001' },
+    { code: 'eng-kjv', label: 'EN · KJV' },
+    { code: 'eng-web', label: 'WEB' },
     { code: 'heb-wlc', label: 'עב · WLC' },
     { code: 'grc-sblgnt', label: 'GR · NT' },
-    { code: 'eng-web', label: 'WEB' },
-    { code: 'eng-asv', label: 'ASV' },
   ];
 
   const selectedVerseObj = data.verses.find((v) => v.verse_num === selectedVerseForModal);
