@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Translation, Book } from '@/lib/types';
-import { BookOpen, Sparkles, Search } from 'lucide-react';
+import { BookOpen, Sparkles, Search, ShieldCheck, Lock, ExternalLink } from 'lucide-react';
 
 interface TranslationsCatalogProps {
   translations: Translation[];
@@ -26,9 +26,9 @@ export function TranslationsCatalog({
     const matchesLang = selectedLanguage === 'all' || t.language.toLowerCase() === selectedLanguage.toLowerCase();
     const matchesLicense =
       selectedLicense === 'all' ||
+      (selectedLicense === 'active' && t.is_active) ||
       (selectedLicense === 'public_domain' && t.license_type === 'public_domain') ||
-      (selectedLicense === 'licensed' && t.license_type === 'licensed') ||
-      (selectedLicense === 'creative_commons' && t.license_type === 'creative_commons');
+      (selectedLicense === 'licensed' && t.license_type === 'licensed');
     const matchesSearch =
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -45,13 +45,13 @@ export function TranslationsCatalog({
         <div>
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-[10px] sm:text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Complete Multilingual Catalog</span>
+            <span>Translations & Canonical Index</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">
             Translations & Biblical Texts
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 max-w-2xl">
-            Explore authentic historical manuscripts, modern analytical versions, and public domain translations across Amharic, English, Hebrew, and Greek.
+            Explore authentic historical manuscripts, public domain translations, and licensing catalog index across Amharic, English, Hebrew, and Greek.
           </p>
         </div>
 
@@ -89,16 +89,16 @@ export function TranslationsCatalog({
 
         {/* License Filter */}
         <div className="flex items-center space-x-2 text-xs">
-          <span className="text-[var(--text-muted)] hidden sm:inline">License:</span>
+          <span className="text-[var(--text-muted)] hidden sm:inline">Filter:</span>
           <select
             value={selectedLicense}
             onChange={(e) => setSelectedLicense(e.target.value)}
             className="w-full sm:w-auto px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs focus:outline-none"
           >
-            <option value="all">All Licenses</option>
-            <option value="public_domain">Public Domain (Open Full Text)</option>
-            <option value="licensed">Licensed / Reference</option>
-            <option value="creative_commons">Creative Commons</option>
+            <option value="all">All ({translations.length})</option>
+            <option value="active">Active Full Texts ({translations.filter((t) => t.is_active).length})</option>
+            <option value="public_domain">Public Domain / Open</option>
+            <option value="licensed">Licensed / Written Agreement Required</option>
           </select>
         </div>
       </div>
@@ -112,7 +112,11 @@ export function TranslationsCatalog({
           return (
             <div
               key={tr.code}
-              className="flex flex-col justify-between rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-color)] p-4 sm:p-5 hover:border-[var(--accent-color)]/60 hover:shadow-md transition-all group"
+              className={`flex flex-col justify-between rounded-2xl bg-[var(--bg-surface)] border p-4 sm:p-5 transition-all group ${
+                tr.is_active
+                  ? 'border-[var(--border-color)] hover:border-[var(--accent-color)]/60 hover:shadow-md'
+                  : 'border-[var(--border-color)]/60 opacity-85 bg-[var(--bg-secondary)]/30'
+              }`}
             >
               <div className="space-y-2.5 sm:space-y-3">
                 {/* Badges row */}
@@ -126,15 +130,21 @@ export function TranslationsCatalog({
                     </span>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      isPublicDomain
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                    }`}
-                  >
-                    {isPublicDomain ? 'Public Domain' : 'Licensed'}
-                  </span>
+                  {tr.is_active ? (
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        isPublicDomain
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      }`}
+                    >
+                      {isPublicDomain ? 'Public Domain' : 'Open License'}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" /> License Required
+                    </span>
+                  )}
                 </div>
 
                 {/* Translation Name */}
@@ -168,13 +178,25 @@ export function TranslationsCatalog({
                   {tr.year ? `Year: ${tr.year}` : 'Manuscript'}
                 </span>
 
-                <Link
-                  href={`/read/${defaultBook}/1?t=${tr.code}`}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold transition-transform active:scale-95 shadow-sm"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Read</span>
-                </Link>
+                {tr.is_active ? (
+                  <Link
+                    href={`/read/${defaultBook}/1?t=${tr.code}`}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold transition-transform active:scale-95 shadow-sm"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Read</span>
+                  </Link>
+                ) : (
+                  <a
+                    href={tr.source_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] text-[var(--text-secondary)] text-xs font-semibold border border-[var(--border-color)] transition-colors"
+                  >
+                    <span>Publisher Info</span>
+                    <ExternalLink className="w-3 h-3 text-[var(--accent-color)]" />
+                  </a>
+                )}
               </div>
             </div>
           );

@@ -106,7 +106,7 @@ export function QuickReaderDashboard({
               onChange={(e) => setSelectedTranslation(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] cursor-pointer"
             >
-              {translations.map((tr) => (
+              {translations.filter((t) => t.is_active).map((tr) => (
                 <option key={tr.code} value={tr.code}>
                   [{tr.short_code || tr.code}] {tr.name}
                 </option>

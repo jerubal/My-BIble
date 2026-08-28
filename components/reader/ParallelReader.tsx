@@ -224,19 +224,17 @@ export function ParallelReader({
 
   const quickSwitchCodes = [
     'am-1875',
-    'am-1954',
-    'am-2001',
     'eng-kjv',
     'eng-web',
     'eng-asv',
-    'eng-amp',
-    'eng-cjb',
-    'eng-esv',
-    'eng-niv',
     'eng-bbe',
     'eng-ylt',
+    'eng-darby',
+    'eng-dra',
+    'eng-gnv',
     'heb-wlc',
     'grc-sblgnt',
+    'grc-tr',
   ];
 
   const selectedVerseObj = data.verses.find((v) => v.verse_num === selectedVerseForModal);
@@ -311,27 +309,27 @@ export function ParallelReader({
                   onChange={(e) => onChangePrimaryTranslation(e.target.value)}
                   className="w-full sm:w-auto text-xs font-bold px-2.5 py-1.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] cursor-pointer"
                 >
-                  <optgroup label="Amharic • አማርኛ (1879, 1954, 2001)">
+                  <optgroup label="Amharic • አማርኛ (Public Domain)">
                     {allTranslations
-                      .filter((t) => t.language === 'Amharic')
+                      .filter((t) => t.language === 'Amharic' && t.is_active)
                       .map((tr) => (
                         <option key={tr.code} value={tr.code}>
                           {tr.short_code || tr.code} — {tr.name}
                         </option>
                       ))}
                   </optgroup>
-                  <optgroup label="English Translations (KJV, WEB, ASV, AMP, CJB, ESV, NIV, etc.)">
+                  <optgroup label="English (Public Domain & Open)">
                     {allTranslations
-                      .filter((t) => t.language === 'English')
+                      .filter((t) => t.language === 'English' && t.is_active)
                       .map((tr) => (
                         <option key={tr.code} value={tr.code}>
                           {tr.short_code || tr.code} — {tr.name}
                         </option>
                       ))}
                   </optgroup>
-                  <optgroup label="Hebrew & Greek Original Texts">
+                  <optgroup label="Original Manuscripts (Hebrew & Greek)">
                     {allTranslations
-                      .filter((t) => t.language === 'Hebrew' || t.language === 'Greek')
+                      .filter((t) => (t.language === 'Hebrew' || t.language === 'Greek') && t.is_active)
                       .map((tr) => (
                         <option key={tr.code} value={tr.code}>
                           {tr.short_code || tr.code} — {tr.name}

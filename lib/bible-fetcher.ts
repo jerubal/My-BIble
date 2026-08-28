@@ -1,11 +1,10 @@
 import { AlignedVerse, Translation, Book } from './types';
-import { SEED_BOOKS } from './seed-data/books';
 import { SEED_TRANSLATIONS } from './seed-data/translations';
 import { SEED_VERSES_RUTH } from './seed-data/verses-ruth';
 import { SEED_VERSES_SAMPLES } from './seed-data/verses-samples';
 import { getAmharicChapterVersesFromDisk } from './amharic-syncer';
 
-// Mapping from translation codes to free public domain API endpoints
+// Mapping from active public domain translation codes to open public APIs
 const API_TRANSLATION_MAP: Record<string, string> = {
   'eng-kjv': 'KJV',
   'eng-web': 'WEB',
@@ -37,49 +36,13 @@ function cleanVerseText(raw: string): string {
 }
 
 /**
- * Custom text enhancer for specialty translations (CJB, AMP, Modern)
- */
-function enhanceTextForTranslation(baseText: string, targetCode: string): string {
-  if (!baseText) return '';
-  
-  if (targetCode === 'eng-cjb') {
-    // Complete Jewish Bible Hebrew name restorations
-    return baseText
-      .replace(/\bJesus Christ\b/g, "Yeshua the Messiah")
-      .replace(/\bJesus\b/g, "Yeshua")
-      .replace(/\bChrist\b/g, "Messiah")
-      .replace(/\bGod\b/g, "Elohim")
-      .replace(/\bthe LORD\b/g, "ADONAI")
-      .replace(/\bLORD\b/g, "ADONAI")
-      .replace(/\bMoses\b/g, "Moshe")
-      .replace(/\bAbraham\b/g, "Avraham")
-      .replace(/\bPeter\b/g, "Kefa")
-      .replace(/\bPaul\b/g, "Sha'ul")
-      .replace(/\bJohn\b/g, "Yochanan")
-      .replace(/\bMary\b/g, "Miryam");
-  }
-
-  if (targetCode === 'eng-amp') {
-    // Amplified style semantic expansion
-    return baseText
-      .replace(/\bfaith\b/gi, "faith [complete trust and confidence in God]")
-      .replace(/\bgrace\b/gi, "grace [God's unmerited favor and spiritual blessing]")
-      .replace(/\bpeace\b/gi, "peace [inner calm and spiritual wholeness]")
-      .replace(/\brighteousness\b/gi, "righteousness [right standing before God]")
-      .replace(/\blove\b/gi, "love [unconditional, sacrificial agape love]")
-      .replace(/\bblessed\b/gi, "blessed [fortunate, prosperous, and spiritually favored]");
-  }
-
-  return baseText;
-}
-
-/**
- * Fetches full chapter verses dynamically across all 66 books and all available translations
+ * Fetches full chapter verses across all 66 books strictly adhering to licensing and data integrity.
+ * Active Public Domain translations are populated. Inactive licensed translations return licensing notices.
  */
 export async function fetchFullChapterVerses(
   book: Book,
   chapterNum: number,
-  requestedTranslationCodes: string[] = ['am-1875', 'am-1954', 'am-2001', 'eng-kjv', 'eng-web', 'heb-wlc', 'grc-sblgnt']
+  requestedTranslationCodes: string[] = ['am-1875', 'eng-kjv', 'eng-web', 'heb-wlc', 'grc-sblgnt']
 ): Promise<AlignedVerse[]> {
   const cacheKey = `${book.slug}-${chapterNum}`;
 
@@ -93,16 +56,14 @@ export async function fetchFullChapterVerses(
     return verseMap.get(vNum)!;
   };
 
-  // 2. Fetch Amharic text directly from the synchronized am_new dataset (All 66 Books)
+  // 2. Fetch Public Domain Amharic text (am-1875 Abu Rumi 1879) from verified local storage
   const amVerses = getAmharicChapterVersesFromDisk(book.book_order, chapterNum);
   const am1875Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1875') || SEED_TRANSLATIONS[0];
-  const am1954Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-1954') || am1875Tr;
-  const am2001Tr = SEED_TRANSLATIONS.find((t) => t.code === 'am-2001') || am1875Tr;
 
   for (const av of amVerses) {
     const vItem = getOrCreateVerse(av.verse_num);
 
-    // Amharic 1879 Abu Rumi
+    // Only populate am-1875 (Authentic Public Domain Amharic)
     vItem.translations['am-1875'] = {
       text: av.text,
       translation_id: am1875Tr.id,
@@ -110,26 +71,6 @@ export async function fetchFullChapterVerses(
       language: am1875Tr.language,
       name: am1875Tr.name,
       script_direction: am1875Tr.script_direction,
-    };
-
-    // Amharic 1954 Haile Selassie
-    vItem.translations['am-1954'] = {
-      text: av.text,
-      translation_id: am1954Tr.id,
-      translation_code: 'am-1954',
-      language: am1954Tr.language,
-      name: am1954Tr.name,
-      script_direction: am1954Tr.script_direction,
-    };
-
-    // Amharic 2001 New Amharic Standard (NASV Biblica)
-    vItem.translations['am-2001'] = {
-      text: av.text,
-      translation_id: am2001Tr.id,
-      translation_code: 'am-2001',
-      language: am2001Tr.language,
-      name: am2001Tr.name,
-      script_direction: am2001Tr.script_direction,
     };
   }
 
@@ -140,7 +81,7 @@ export async function fetchFullChapterVerses(
 
   for (const lv of localMatching) {
     const tr = SEED_TRANSLATIONS.find((t) => t.code === lv.translation_code);
-    if (tr) {
+    if (tr && tr.is_active) {
       const vItem = getOrCreateVerse(lv.verse_num);
       vItem.translations[lv.translation_code] = {
         text: lv.text,
@@ -153,8 +94,12 @@ export async function fetchFullChapterVerses(
     }
   }
 
-  // 4. Fetch missing translations from open public API
-  const apiTranslationsToFetch = ['eng-kjv', 'eng-web', 'eng-asv', 'eng-bbe', 'eng-ylt', 'eng-darby', 'eng-dra', 'eng-gnv', 'heb-wlc', 'grc-sblgnt', 'grc-tr'];
+  // 4. Fetch missing translations from open public domain APIs for all 66 books
+  const activeApiCodes = Object.keys(API_TRANSLATION_MAP);
+  const apiTranslationsToFetch = activeApiCodes.filter((code) => {
+    const tr = SEED_TRANSLATIONS.find((t) => t.code === code);
+    return tr && tr.is_active;
+  });
 
   const fetchPromises = apiTranslationsToFetch.map(async (code) => {
     const apiCode = API_TRANSLATION_MAP[code];
@@ -191,54 +136,26 @@ export async function fetchFullChapterVerses(
         };
       }
     } catch (err) {
-      // Network fetch warning handled gracefully by fallback engine below
+      // Graceful error handling for offline/network issues
     }
   });
 
   await Promise.allSettled(fetchPromises);
 
-  // 5. Complete 100% Availability Guarantee: Synthesize & Fallback for ANY translation
+  // 5. Data-Integrity & Licensing Compliance Verification
   for (const vItem of verseMap.values()) {
-    // Reference English text base
-    const baseEnglish =
-      vItem.translations['eng-web']?.text ||
-      vItem.translations['eng-kjv']?.text ||
-      vItem.translations['eng-asv']?.text ||
-      '';
-
-    const baseAmharic =
-      vItem.translations['am-1875']?.text ||
-      vItem.translations['am-2001']?.text ||
-      vItem.translations['am-1954']?.text ||
-      '';
-
-    // Populate every translation registered in SEED_TRANSLATIONS
+    // For any inactive licensed translation that might be requested in catalog or comparison:
     for (const tr of SEED_TRANSLATIONS) {
-      if (!vItem.translations[tr.code]) {
-        let fallbackText = '';
-
-        if (tr.language === 'Amharic') {
-          fallbackText = baseAmharic;
-        } else if (tr.language === 'English') {
-          fallbackText = enhanceTextForTranslation(baseEnglish, tr.code);
-        } else if (tr.code === 'heb-wlc' && book.testament === 'new') {
-          fallbackText = vItem.translations['eng-kjv']?.text || baseEnglish;
-        } else if (tr.code.startsWith('grc') && book.testament === 'old') {
-          fallbackText = vItem.translations['heb-wlc']?.text || baseEnglish;
-        } else {
-          fallbackText = baseEnglish || baseAmharic;
-        }
-
-        if (fallbackText) {
-          vItem.translations[tr.code] = {
-            text: fallbackText,
-            translation_id: tr.id,
-            translation_code: tr.code,
-            language: tr.language,
-            name: tr.name,
-            script_direction: tr.script_direction,
-          };
-        }
+      if (!tr.is_active) {
+        // Return clear notice rather than cloning another translation's text
+        vItem.translations[tr.code] = {
+          text: `[${tr.name}]: ይህ ትርጉም በቅጂ መብት ባለቤቱ የተጠበቀ በመሆኑ ከመሰራጨቱ በፊት የተረጋገጠ የጽሑፍ ፈቃድ (License Agreement) ያስፈልገዋል። [License agreement required from rights holder before distribution.]`,
+          translation_id: tr.id,
+          translation_code: tr.code,
+          language: tr.language,
+          name: tr.name,
+          script_direction: tr.script_direction,
+        };
       }
     }
   }
