@@ -13,6 +13,8 @@ import { SavedView } from '@/components/saved/SavedView';
 import { SearchModal } from '@/components/search/SearchModal';
 import { DailyVerseModal } from '@/components/reader/DailyVerseModal';
 import { TranslationInfoModal } from '@/components/reader/TranslationInfoModal';
+import { ReadingPlansModal } from '@/components/plans/ReadingPlansModal';
+import { AuthModal } from '@/components/auth/AuthModal';
 import {
   Sparkles,
   Search,
@@ -25,6 +27,8 @@ import {
   RotateCcw,
   Volume2,
   Image as ImageIcon,
+  Calendar,
+  User,
 } from 'lucide-react';
 
 interface HomePageClientProps {
@@ -49,6 +53,8 @@ export function HomePageClient({
   const [isDailyVerseOpen, setIsDailyVerseOpen] = useState(false);
   const [isAttributionOpen, setIsAttributionOpen] = useState(false);
   const [isSavedVersesOpen, setIsSavedVersesOpen] = useState(false);
+  const [isReadingPlansOpen, setIsReadingPlansOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // User persistent state
   const [theme, setTheme] = useState<string>('dark');
@@ -282,7 +288,39 @@ export function HomePageClient({
               <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
             </div>
 
-            {/* 5. Quick Translation Switcher Banner */}
+            {/* 5. Guided Reading Plans Card */}
+            <div
+              onClick={() => setIsReadingPlansOpen(true)}
+              className="row-card group"
+            >
+              <div>
+                <div className="row-label flex items-center space-x-1">
+                  <Calendar className="w-3 h-3 text-[var(--accent-color)]" />
+                  <span>Guided Reading Plans</span>
+                </div>
+                <div className="row-value">30-Day Gospels & 1-Year Bible</div>
+                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Track daily scripture portions</div>
+              </div>
+              <span className="gold-dot group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+
+            {/* 6. Account & Cloud Sync Card */}
+            <div
+              onClick={() => setIsAuthModalOpen(true)}
+              className="row-card group"
+            >
+              <div>
+                <div className="row-label flex items-center space-x-1">
+                  <User className="w-3 h-3 text-emerald-500" />
+                  <span>Cloud Backup & Sync</span>
+                </div>
+                <div className="row-value">PostgreSQL Multi-Device Sync</div>
+                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Backup highlights and notes</div>
+              </div>
+              <span className="gold-dot text-emerald-500">☁</span>
+            </div>
+
+            {/* 7. Quick Translation Switcher Banner */}
             <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-color)] block">
@@ -451,6 +489,16 @@ export function HomePageClient({
           setIsSavedVersesOpen(false);
           loadUserData();
         }}
+      />
+
+      <ReadingPlansModal
+        isOpen={isReadingPlansOpen}
+        onClose={() => setIsReadingPlansOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
       <TranslationInfoModal

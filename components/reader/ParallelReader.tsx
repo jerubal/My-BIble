@@ -7,7 +7,11 @@ import { ChapterData, Translation, SavedFavorite, SavedHighlight, SavedNote, Hig
 import { MorphologyModal } from '@/components/study/MorphologyModal';
 import { CrossReferencesModal } from '@/components/study/CrossReferencesModal';
 import { VerseNoteModal } from '@/components/reader/VerseNoteModal';
-import { AudioPlayerBar } from '@/components/audio/AudioPlayerBar';
+import { AudioPlayerBar } from './AudioPlayerBar';
+import { VerseImageModal } from './VerseImageModal';
+import { InterlinearView } from './InterlinearView';
+import { ReadingPlansModal } from '@/components/plans/ReadingPlansModal';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { InlineVerseStudyStrip } from '@/components/reader/InlineVerseStudyStrip';
 import { ToolsBottomSheet } from '@/components/reader/ToolsBottomSheet';
 import {
@@ -23,6 +27,11 @@ import {
   FileText,
   Link2,
   Sparkles,
+  Image as ImageIcon,
+  Calendar,
+  User,
+  Columns,
+  BookOpen,
 } from 'lucide-react';
 
 interface ParallelReaderProps {
@@ -60,13 +69,27 @@ export function ParallelReader({
   const [highlights, setHighlights] = useState<Record<string, SavedHighlight>>({});
   const [notes, setNotes] = useState<Record<string, SavedNote>>({});
 
-  // Study modals and tools sheet state
+  // Study modals, PWA, and tools state
+  const [viewMode, setViewMode] = useState<'single' | 'parallel' | 'interlinear'>(
+    isParallelMode ? 'parallel' : 'single'
+  );
   const [isAudioOpen, setIsAudioOpen] = useState<boolean>(false);
+  const [activePlayingVerse, setActivePlayingVerse] = useState<number | null>(null);
+  const [isVerseImageModalOpen, setIsVerseImageModalOpen] = useState<boolean>(false);
+  const [isReadingPlansOpen, setIsReadingPlansOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isToolsSheetOpen, setIsToolsSheetOpen] = useState<boolean>(false);
   const [isMorphologyOpen, setIsMorphologyOpen] = useState<boolean>(false);
   const [isCrossRefOpen, setIsCrossRefOpen] = useState<boolean>(false);
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState<boolean>(false);
   const [selectedVerseForModal, setSelectedVerseForModal] = useState<number>(1);
+
+  // Sync external parallel mode prop with internal viewMode
+  useEffect(() => {
+    if (isParallelMode && viewMode === 'single') {
+      setViewMode('parallel');
+    }
+  }, [isParallelMode]);
 
   const loadUserData = () => {
     try {
@@ -271,20 +294,86 @@ export function ParallelReader({
           )}
         </div>
 
-        {/* Listen Audio Button */}
-        <div className="mt-3.5 flex items-center justify-center">
+        {/* Reader Top Action Bar: Audio, Reading Plans, Auth Sync */}
+        <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
           <button
             onClick={() => setIsAudioOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-full bg-[var(--gold-gradient)] text-[#241c08] text-xs font-bold shadow-md hover:brightness-105 transition-all active:scale-95"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[var(--gold-gradient)] text-[#241c08] text-xs font-bold shadow-md hover:brightness-105 transition-all active:scale-95"
           >
             <Volume2 className="w-3.5 h-3.5" />
-            <span>ድምፅ አዳምጥ • Listen Audio</span>
+            <span>Audio Player</span>
           </button>
+
+          <button
+            onClick={() => setIsReadingPlansOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs font-bold shadow-sm transition-all"
+          >
+            <Calendar className="w-3.5 h-3.5 text-[var(--accent-color)]" />
+            <span>Reading Plans</span>
+          </button>
+
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs font-bold shadow-sm transition-all"
+          >
+            <User className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Cloud Sync</span>
+          </button>
+        </div>
+
+        {/* 3-Way View Mode Switcher (Single | Parallel | Interlinear) */}
+        <div className="mt-4 flex items-center justify-center">
+          <div className="inline-flex p-1 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-color)] shadow-inner text-xs font-bold">
+            <button
+              onClick={() => setViewMode('single')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
+                viewMode === 'single'
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Single</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('parallel')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
+                viewMode === 'parallel'
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span>Parallel</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('interlinear')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
+                viewMode === 'interlinear'
+                  ? 'bg-[var(--gold-surface)] text-[var(--gold-heading)] border border-[var(--gold-border)] shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Interlinear</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Single Reader View */}
-      {!isParallelMode ? (
+      {/* Main Reader Content according to viewMode */}
+      {viewMode === 'interlinear' ? (
+        <InterlinearView
+          book={data.book}
+          chapter={data.chapter}
+          verses={data.verses}
+          fontSize={fontSize}
+          activeVerseNum={activeVerseNum}
+          onSelectVerse={(vNum) => handleSelectVerse(vNum)}
+        />
+      ) : viewMode === 'single' ? (
         <div className="max-w-3xl mx-auto rounded-2xl sm:rounded-3xl bg-[var(--bg-surface)] border border-[var(--border-color)] p-4 sm:p-8 md:p-10 shadow-sm space-y-4 sm:space-y-6">
           {/* Ribbon Strip for Quick Translation Switching (Matching Concept) */}
           <div className="ribbon-strip">
@@ -542,6 +631,19 @@ export function ParallelReader({
                           <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-white' : 'text-amber-500'}`} />
                         </button>
 
+                        {/* Generate Scripture Card */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedVerseForModal(verse.verse_num);
+                            setIsVerseImageModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--gold-heading)] transition-colors"
+                          title="Generate Scripture Card Image"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
+                        </button>
+
                         {/* Copy Button */}
                         <button
                           onClick={(e) => handleCopyVerse(verse.verse_num, e)}
@@ -628,6 +730,17 @@ export function ParallelReader({
                       title="Cross References"
                     >
                       <Link2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedVerseForModal(verse.verse_num);
+                        setIsVerseImageModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--gold-heading)]"
+                      title="Scripture Card Generator"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-amber-500" />
                     </button>
                     <button
                       onClick={(e) => handleToggleFavorite(verse.verse_num, e)}
@@ -744,19 +857,41 @@ export function ParallelReader({
       {/* Modals & Tools */}
       {isAudioOpen && (
         <AudioPlayerBar
+          book={data.book}
+          chapter={data.chapter}
           verses={data.verses}
           activeTranslation={activeTranslation}
-          bookName={data.book.name_en}
-          chapterNum={data.chapter}
-          currentVerseNum={activeVerseNum}
-          onVerseChange={(vNum) => {
-            setActiveVerseNum(vNum);
-            const el = document.getElementById(`verse-${vNum}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          activePlayingVerse={activePlayingVerse}
+          onActivePlayingVerseChange={(vNum) => {
+            setActivePlayingVerse(vNum);
+            if (vNum) {
+              const el = document.getElementById(`verse-${vNum}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
           }}
           onClose={() => setIsAudioOpen(false)}
         />
       )}
+
+      <VerseImageModal
+        isOpen={isVerseImageModalOpen}
+        onClose={() => setIsVerseImageModalOpen(false)}
+        book={data.book}
+        chapter={data.chapter}
+        verseNum={selectedVerseForModal}
+        verseTextEn={data.verses.find((v) => v.verse_num === selectedVerseForModal)?.translations['eng-kjv']?.text}
+        verseTextAm={data.verses.find((v) => v.verse_num === selectedVerseForModal)?.translations['am-1875']?.text}
+      />
+
+      <ReadingPlansModal
+        isOpen={isReadingPlansOpen}
+        onClose={() => setIsReadingPlansOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
 
       <MorphologyModal
         isOpen={isMorphologyOpen}

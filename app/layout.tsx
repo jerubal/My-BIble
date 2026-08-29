@@ -24,6 +24,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+
 export default function RootLayout({
   children,
 }: {
@@ -32,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="sepia">
       <body className="antialiased selection:bg-amber-200 dark:selection:bg-amber-900">
+        <PWAInstallPrompt />
         {children}
       </body>
     </html>
